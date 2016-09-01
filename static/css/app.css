@@ -1,0 +1,31 @@
+#map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 120px;
+}
+
+#timeline {
+    height: 120px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+#play {
+	position: absolute;
+  bottom: 150px;
+  right: 20;
+  width: 100;
+  border: 1px solid red;
+}
+
+#show {
+  position: absolute;
+  top: 20px;
+  right: 20;
+  width: 100;
+  border: 1px solid red;
+}
