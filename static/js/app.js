@@ -84,160 +84,51 @@ function hideAirports() {
 
 
 
-function flightsim(date, time){
+function flightsim(date, time) {
   $.getJSON( "/api/flight/"+date+'/'+time, {
   tags: "mount rainier",
   tagmode: "any",
   format: "json"
  }).done(function( data ) {
 
-  let flightsGeo = {"type": "FeatureCollection",
-                       "features": []}
+    svg.selectAll("*").remove()
 
-    data.forEach(function(element, index, array){
+    var flights = data;
 
-       const coor = [element.coord_ori.split(',').map(parseFloat)]
+    function obj(ll) { return { y: ll[0], x: ll[1] } }
 
-       flightsGeo.features.push({
-         type: "Feature",
-         geometry: {
-           coordinates: coor,
-           type: "Points"
-         }
-       })
+    flights.forEach(function(element, index, array){
+      const ori = element.coord_ori.split(',').map(parseFloat);
+      const dest = element.coord_dest.split(',').map(parseFloat);
 
+      var generator = new arc.GreatCircle(obj(ori),
+                                          obj(dest));
+      var line = generator.Arc(100, { offset: 10 });
+      var newLine = L.polyline(line.geometries[0].coords.map(function(c) {
+                                    return c.reverse()
+                                }), {
+                                    color: '#a643af',
+                                    weight: 1.5,
+                                    opacity: 0.5
+                                })
+                                  .addTo(map)
+      var totalLength = newLine._path.getTotalLength()
+      newLine._path.classList.add('path-start')
+      newLine._path.style.strokeDashoffset = totalLength
+      newLine._path.style.strokeDasharray = totalLength
+      setTimeout((function(path) {
+        return function() {
+            path.style.strokeDashoffset = 0
+        };
+      })(newLine._path), index * 10)
     })
-
-  flightsGeo.features.forEach(function(d) {
-      d.LatLng = new L.LatLng(d.geometry.coordinates[0][0],
-                  d.geometry.coordinates[0][1])
-    })
-
-    var feature = g.selectAll(".departures")
-                       .data(flightsGeo.features)
-    feature.exit().remove()
-    feature.enter().append("circle")
-                      .style("stroke", "black")
-                      .style("opacity", .6)
-                      .style("fill", "blue")
-                      .attr("r", 2)
-                      .attr("class", "departures")
-                      .attr("transform",
-      function(d) {
-        return "translate("+
-          map.latLngToLayerPoint(d.LatLng).x +","+
-          map.latLngToLayerPoint(d.LatLng).y +")";
-        }
-      )
-      .transition().duration(1000)
-        .attr("r", 15)
-        .attr("stroke-width", 0)
-            .style("opacity", 0)
-
-    map.on("viewreset", update);
-    update();
-
-    function update() {
-      feature.attr("transform",
-      function(d) {
-        return "translate("+
-          map.latLngToLayerPoint(d.LatLng).x +","+
-          map.latLngToLayerPoint(d.LatLng).y +")";
-        }
-      )
-     }
- })
+  })
 }
 
-// Get start/end times
-const startTime = new Date(2008, 0, 1)
-const endTime = new Date(2008, 0, 31)
-
-// Create a DataSet with data
-const timelineData = new vis.DataSet([{ start: startTime, end: endTime, content: 'Flights Tracks' }])
-
-// Set timeline options
-const timelineOptions = {
-  timeAxis: {scale: 'day'},
-  "width":  "100%",
-  "type": "box",
-  "orientation": "top",
-  "showCurrentTime":true,
-  "clickToUse":true
-}
-
-// Setup timeline
-timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions)
-timeline.addCustomTime(startTime, 'customTime');
-
-
-function Playback(st, et, callback) {
-  var interval = 2000;
-  var period = 1;
-  var startTime = st;
-  var endTime = et;
-  var timer_id;
-
-  this.play = function() {
-
-    timer_id = setInterval( function() {
-      var datestring = startTime.getFullYear() + ("0"+(startTime.getMonth()+1)).slice(-2) + ("0" + startTime.getDate()).slice(-2)
-      var hourstring = ("0" + startTime.getHours()).slice(-2) + ("0" + startTime.getMinutes()).slice(-2) + '00';
-      flightsim(datestring, hourstring);
-      startTime = addMinutes(startTime, period)
-      timeline.setCustomTime(startTime, 'customTime');
-      if(typeof(callback) === 'function') callback(startTime, endTime);
-    }, interval);
-    
-  }
-
-  this.stop = function() {
-    clearInterval(timer_id);
-  }
-
-  function addMinutes(date, minutes) {
-    return new Date(date.getTime() + minutes*60000);
-  }
-
-}
-
-var playback;
-
-cb = function(startTime, endTime) {
-    if(startTime >= endTime)
-    {
-        timer.stop();
-    }
-}
-
-playback = new Playback(startTime, endTime, cb)
-
-const play = document.getElementById("play")
 const show = document.getElementById("show")
-
-play.onclick = function() {
-  if (play.className == "play") {
-    playback.play()
-    play.className = "stop"
-    play.value = "Stop"
-  } else {
-    playback.stop()
-    play.className = "play"
-    play.value = "Play"
-  }
-}
+document.getElementById("flightstime").value = "2008-01-01T00:00";
 
 show.onclick = function() {
-  if (show.className == "show") {
-    showAirports()
-    show.className = "hide"
-    show.value = "Hide Airports"
-  } else {
-    hideAirports()
-    show.className = "show"
-    show.value = "Show Airports"
-  }
+  var flightstime = document.getElementById("flightstime").value.split('T')  
+  flightsim(flightstime[0].split('-').join(''), flightstime[1].split(':').join('')+'00')
 }
-
-
-
